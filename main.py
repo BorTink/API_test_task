@@ -14,12 +14,43 @@ create_table_sql = """CREATE TABLE users (
 );"""
 
 
+# SQL код, который будет в дальнейшем использоваться в соответственных им функциях
+
+db_new_user_sql = """INSERT INTO users (first_name, last_name, gender, active) VALUES($1, $2, $3, TRUE)"""
+
+
+# Сами функции для взаимодействия с БД (обозначены фразой "db_")
+
+async def db_new_user(db_pool, first_name, last_name, gender):
+    await db_pool.fetch(db_new_user_sql, first_name, last_name, gender)
+
+
+async def new_user(request):
+    try:
+        db_pool = request.app['pool']
+        first_name = request.query['first_name']
+        last_name = request.query['last_name']
+        gender = request.query['gender']
+        print('Creating a new user:', first_name, last_name, gender)
+
+        await db_new_user(db_pool, first_name, last_name, gender)
+
+        response_obj = {'status': 'success', 'message': 'user successfully created'}
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=200)
+    except Exception as e:
+        response_obj = {'status': 'failed', 'message': str(e)}
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=500)
+
+
 # Функция инициализации веб-приложения со всеми Endpoints
 
 async def init_app():
     app = web.Application()
     web.Response(text='Hello', status=200)
     app['pool'] = await asyncpg.create_pool(user='postgres')  # Создаю БД у пользователя postgres (по умолчанию)
+    app.router.add_post('/new', new_user)
     try:
         await app['pool'].fetch(create_table_sql)
         print('Created "Users" table')
