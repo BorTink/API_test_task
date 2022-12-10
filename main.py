@@ -28,6 +28,7 @@ db_edit_user_sql_last_name = """UPDATE users SET last_name=$2 WHERE id=$1"""
 
 db_edit_user_sql_gender = """UPDATE users SET gender=$2 WHERE id=$1"""
 
+db_get_list_sql = """SELECT * FROM users ORDER BY id"""
 
 # Сами функции для взаимодействия с БД (обозначены фразой "db_")
 
@@ -49,6 +50,15 @@ async def db_edit_user(db_pool, inserted_id, first_name='', last_name='', gender
         await db_pool.fetch(db_edit_user_sql_gender, inserted_id, gender)
     result = await db_pool.fetch(db_select_user_sql, inserted_id)
     return result
+
+
+async def db_get_list(db_pool):
+    result = await db_pool.fetch(db_get_list_sql)
+    return result
+
+
+# Те же функции для взаимодействия с БД, только направленные на обработку реквестов с сервера
+# в зависимости от запроса и конкретного Endpont'а
 
 
 async def new_user(request):
@@ -83,7 +93,6 @@ async def select_user(request):
         response_obj = {'status': 'failed', 'message': str(e)}
         print(response_obj['message'])
         return web.Response(text=json.dumps(response_obj), status=500)
-# Функция инициализации веб-приложения со всеми Endpoints
 
 
 async def edit_user(request):
@@ -104,6 +113,22 @@ async def edit_user(request):
         return web.Response(text=json.dumps(response_obj), status=500)
 
 
+async def get_list(request):
+    try:
+        db_pool = request.app['pool']
+        print('Getting full list')
+        result = await db_get_list(db_pool)
+        result = str(result)
+        print(result)
+        return web.Response(body=result)
+    except Exception as e:
+        response_obj = {'status': 'failed', 'message': str(e)}
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=500)
+
+
+# Функция инициализации веб-приложения со всеми Endpoints
+
 async def init_app():
     app = web.Application()
     web.Response(text='Hello', status=200)
@@ -111,6 +136,7 @@ async def init_app():
     app.router.add_post('/new', new_user)
     app.router.add_get('/select', select_user)
     app.router.add_put('/edit', edit_user)
+    app.router.add_get('/get_list', get_list)
     try:
         await app['pool'].fetch(create_table_sql)
         print('Created "Users" table')
