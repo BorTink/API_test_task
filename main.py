@@ -18,11 +18,18 @@ create_table_sql = """CREATE TABLE users (
 
 db_new_user_sql = """INSERT INTO users (first_name, last_name, gender, active) VALUES($1, $2, $3, TRUE)"""
 
+db_select_user_sql = """SELECT * FROM users WHERE id=$1;"""
+
 
 # Сами функции для взаимодействия с БД (обозначены фразой "db_")
 
 async def db_new_user(db_pool, first_name, last_name, gender):
     await db_pool.fetch(db_new_user_sql, first_name, last_name, gender)
+
+
+async def db_select_user(db_pool, inserted_id):
+    result = await db_pool.fetch(db_select_user_sql, inserted_id)
+    return result
 
 
 async def new_user(request):
@@ -44,13 +51,28 @@ async def new_user(request):
         return web.Response(text=json.dumps(response_obj), status=500)
 
 
+async def select_user(request):
+    try:
+        db_pool = request.app['pool']
+        inserted_id = int(request.query['id'])
+        print('Selecting a user with id =', inserted_id)
+        result = await db_select_user(db_pool, inserted_id)
+        result = str(result[0])
+        print(result)
+        return web.Response(body=result)
+    except Exception as e:   #Выведем также ошибку, если она произойдет
+        response_obj = {'status': 'failed', 'message': str(e)}
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=500)
 # Функция инициализации веб-приложения со всеми Endpoints
+
 
 async def init_app():
     app = web.Application()
     web.Response(text='Hello', status=200)
     app['pool'] = await asyncpg.create_pool(user='postgres')  # Создаю БД у пользователя postgres (по умолчанию)
     app.router.add_post('/new', new_user)
+    app.router.add_get('/select', select_user)
     try:
         await app['pool'].fetch(create_table_sql)
         print('Created "Users" table')
