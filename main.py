@@ -30,6 +30,8 @@ db_edit_user_sql_gender = """UPDATE users SET gender=$2 WHERE id=$1"""
 
 db_get_list_sql = """SELECT * FROM users ORDER BY id"""
 
+db_deactivate_user_sql = """UPDATE users SET active=FALSE WHERE id=$1"""
+
 # Сами функции для взаимодействия с БД (обозначены фразой "db_")
 
 async def db_new_user(db_pool, first_name, last_name, gender):
@@ -57,9 +59,12 @@ async def db_get_list(db_pool):
     return result
 
 
+async def db_deactivate_user(db_pool, inserted_id):
+    await db_pool.fetch(db_deactivate_user_sql, inserted_id)
+
+
 # Те же функции для взаимодействия с БД, только направленные на обработку реквестов с сервера
 # в зависимости от запроса и конкретного Endpont'а
-
 
 async def new_user(request):
     try:
@@ -127,6 +132,23 @@ async def get_list(request):
         return web.Response(text=json.dumps(response_obj), status=500)
 
 
+async def deactivate_user(request):
+    try:
+        db_pool = request.app['pool']
+        inserted_id = int(request.query['id'])
+        print('Deleted a user with id =', inserted_id)
+
+        await db_deactivate_user(db_pool, inserted_id)
+
+        response_obj = {'status': 'success', 'message': 'user successfully deleted'} # Пишу "deleted", а не "deactivated", потому что по ТЗ метод называется "удаление пользователя"
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=200)
+    except Exception as e:
+        response_obj = {'status': 'failed', 'message': str(e)}
+        print(response_obj['message'])
+        return web.Response(text=json.dumps(response_obj), status=500)
+
+
 # Функция инициализации веб-приложения со всеми Endpoints
 
 async def init_app():
@@ -137,6 +159,7 @@ async def init_app():
     app.router.add_get('/select', select_user)
     app.router.add_put('/edit', edit_user)
     app.router.add_get('/get_list', get_list)
+    app.router.add_put('/deactivate', deactivate_user)
     try:
         await app['pool'].fetch(create_table_sql)
         print('Created "Users" table')
