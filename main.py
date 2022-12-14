@@ -15,8 +15,8 @@ def setup_routes(application):
 async def init_app():
     app = web.Application()
     web.Response(text='Hello', status=200)
-    app['pool'] = await asyncpg.create_pool(user=config.user, host=config.host, port=config.port, password=config.password,
-                                            database=config.database)  # Создем БД
+    app['pool'] = await asyncpg.create_pool(user=config['user'], host=config['host'], port=config['port'], password=config['password'],
+                                            database=config['database'])  # Создем БД
     setup_routes(app)  # Устанавливаем routes через routes.py
     try:
         await app['pool'].fetch(create_table_sql)

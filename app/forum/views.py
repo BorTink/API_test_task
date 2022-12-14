@@ -1,7 +1,7 @@
 import json
 from aiohttp import web
 from loguru import logger
-from db_views import db_get_list, db_new_user, db_select_user, db_edit_user, db_deactivate_user
+from app.forum.db_views import db_get_list, db_new_user, db_select_user, db_edit_user, db_deactivate_user
 
 # Функции для взаимодействия с БД, только направленные на обработку реквестов с сервера
 # в зависимости от запроса и конкретного Endpont'а
